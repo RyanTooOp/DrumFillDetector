@@ -76,15 +76,16 @@ class InstanceBinaryTree(object):
     def isBiggerMin(self, newNode):
         return newNode.getValue() > self.getMinValue()
     def resetRoot(self):
-        currentNode = self.getRootNode()
-        countHorizontal = 0
+        #right is plus, 
+        currentNodeRight = self.getRootNode()
+        currentNodeLeft = self.getRootNode()
+        countHorizontalLeft = 0
         while currentNode.getRightNode() != None:
             currentNode = currentNode.getRightNode()
-            countHorizontal += 1
-        #If the amount of horizontal strip is smaller than 20 in total
-        if countHorizontal < 11:
-            #We do not need to reset the base
-            return
+            countHorizontalRight += 1
+        while currentNode.getLeftNode() != None:
+            currentNode = currentNode.getLeftNode()
+            countHorizontalLeft += 1
         #Sets the  new root to be half of the size of the remaining horizontal nodes
         halfHorizontal = (countHorizontal - 10) // 2
         tempRoot = self.getRootNode()
@@ -101,35 +102,51 @@ class InstanceBinaryTree(object):
     #Detects whether we need to reset the root
     def isRequireResetRoot(self):
         currentNodeLeft = self.getRootNode()
+        currentNodeRight = self.getRootNode()
+        isLeftInRange = False
+        isRightInRange = False
         for left in range(self.getThreshold()):
-            if currentNodeLeft.getLeftNode() == None:
+            if currentNodeLeft == None:
                 print("True in left!")
                 print("Left = " + repr(left))
-                return True
+                isLeftInRange = True
+                break
             currentNodeLeft = currentNodeLeft.getLeftNode()
-        print("False!")
+        for right in range(self.getThreshold()):
+            if currentNodeRight == None:
+                print("True in right!")
+                print("Right = " + repr(right))
+                isRightInRange = True
+                break
+            currentNodeRight = currentNodeRight.getRightNode()
+        if isLeftInRange == True and isRightInRange == False:
+            print("Re root")
+            return True
+        print("No re root!")
         return False
     #Function to get the minimum node value | Usually called after deleting node
     #Recursively performs this, numLoops prevents infinite loops
-    def deleteSmallestNode(self, numLoops):
+    def deleteSmallestNode(self):
         currentNode = self.getRootNode()
-        #Base Case #1
-        if currentNode.getLeftNode() == None and numLoops < 1:
-            self.resetRoot()
-            #We do not have to set it to none, as there are no longer pointers for the node
-            smallNode = self.getRootNode()
-            #Prevents infinite recursion
-            if self.getRootNode() == currentNode:
-                self.deleteSmallestNode(numLoops + 1)
-                return
-            while smallNode.getLeftNode() != currentNode:
-                smallNode = smallNode.getLeftNode()
-            smallNode.setLeftNode(currentNode.getRightNode())
+        if self.isRequireResetRoot() == True:
             
-            currentNode.setRightNode(None) #just in case having a pointer to a node keeps it in memory
-        elif (self.isRequireResetRoot() == True and numLoops <= 1):
-            self.resetRoot()
-            self.deleteSmallestNode(numLoops + 1)
+        #Base Case #1
+            if currentNode.getLeftNode() == None:
+                self.resetRoot()
+                #We do not have to set it to none, as there are no longer pointers for the node
+                smallNode = self.getRootNode()
+                #Prevents infinite recursion
+                if self.getRootNode() == currentNode:
+                    self.deleteSmallestNode()
+                    return
+                while smallNode.getLeftNode() != currentNode:
+                    smallNode = smallNode.getLeftNode()
+                smallNode.setLeftNode(currentNode.getRightNode())
+                
+                currentNode.setRightNode(None) #just in case having a pointer to a node keeps it in memory
+            else:
+                self.resetRoot()
+                self.deleteSmallestNode()
         
         
         
@@ -163,7 +180,7 @@ class InstanceBinaryTree(object):
             #Actually add it into the binary tree
             self.getRootNode().nodeAddNode(newNode)
             #Delete the smallest node
-            self.deleteSmallestNode(0)
+            self.deleteSmallestNode()
             #Update the smallest node
             self.updateMinimum()
         #else, its not added
