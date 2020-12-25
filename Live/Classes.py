@@ -5,6 +5,7 @@ Created on Fri Dec 25 13:26:39 2020
 
 @author: ryanwang
 """
+import random
 
 #The class that represents a node of a certain level of pitch (within 44100)
 class PitchNode(object):
@@ -60,10 +61,12 @@ class PitchNode(object):
 #The class that represents a single sample / a time period
 class InstanceBinaryTree(object):
     #Initializes the class
-    def __init__(self, newRootVal):
+    def __init__(self, newRootVal, newThreshold, newMaxNodesAllowed):
         self.rootNode = PitchNode(newRootVal)
         self.totalNode = 1
         self.minValue = newRootVal
+        self.threshold = newThreshold
+        self.maxNodesAllowed = newMaxNodesAllowed
         
     ##################################################################
     #The following is about normal inserting node
@@ -78,71 +81,64 @@ class InstanceBinaryTree(object):
         while currentNode.getRightNode() != None:
             currentNode = currentNode.getRightNode()
             countHorizontal += 1
+        #If the amount of horizontal strip is smaller than 20 in total
+        if countHorizontal < 11:
+            #We do not need to reset the base
+            return
         #Sets the  new root to be half of the size of the remaining horizontal nodes
-        halfHorizontal = countHorizontal // 2
+        halfHorizontal = (countHorizontal - 10) // 2
         tempRoot = self.getRootNode()
         oldRoot = self.getRootNode()
         for i in range(halfHorizontal - 1):
             tempRoot = tempRoot.getRightNode()
         newRoot = tempRoot.getRightNode()
-        tempRoot.setRightNode(None)
         print("newRoot = " + repr(newRoot))
+        tempRoot.setRightNode(None)
         self.setRootNode(newRoot)
         self.getRootNode().nodeAddNode(oldRoot) #Adds the old root as a new root
-        print("Help me = " + repr(self.treeInorderTrav()))
-        '''
+        print("Root Reseted")
         
-        tempNode = self.getRootNode()
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        for i in range(halfHorizontal-1):
-            tempNode = tempNode.getRightNode()
-        newRoot = tempNode.getRightNode()
-        rootSmallestChild = newRoot
-        while rootSmallestChild.getLeftNode() != None:
-            rootSmallestChild = rootSmallestChild.getLeftNode()
-        rootSmallestChild.setLeftNode(tempNode)
-        tempNode.setRightNode(None)
-        self.setRootNode(newRoot)
-        '''
+    #Detects whether we need to reset the root
+    def isRequireResetRoot(self):
+        currentNodeLeft = self.getRootNode()
+        for left in range(self.getThreshold()):
+            if currentNodeLeft.getLeftNode() == None:
+                print("True in left!")
+                print("Left = " + repr(left))
+                return True
+            currentNodeLeft = currentNodeLeft.getLeftNode()
+        print("False!")
+        return False
     #Function to get the minimum node value | Usually called after deleting node
-    def deleteSmallestNode(self):
+    #Recursively performs this, numLoops prevents infinite loops
+    def deleteSmallestNode(self, numLoops):
         currentNode = self.getRootNode()
-        if currentNode.getLeftNode() == None:
-            print("enter")
+        #Base Case #1
+        if currentNode.getLeftNode() == None and numLoops < 1:
             self.resetRoot()
             #We do not have to set it to none, as there are no longer pointers for the node
-            
             smallNode = self.getRootNode()
+            #Prevents infinite recursion
+            if self.getRootNode() == currentNode:
+                self.deleteSmallestNode(numLoops + 1)
+                return
             while smallNode.getLeftNode() != currentNode:
                 smallNode = smallNode.getLeftNode()
             smallNode.setLeftNode(currentNode.getRightNode())
             
             currentNode.setRightNode(None) #just in case having a pointer to a node keeps it in memory
-        elif currentNode.getLeftNode().getLeftNode() == None:
+        elif (self.isRequireResetRoot() == True and numLoops <= 1):
             self.resetRoot()
-            self.deleteSmallestNode()
-            
-            
-            '''
-            smallNode = self.getRootNode()
-            while smallNode.getLeftNode() != currentNode:
-                smallNode = smallNode.getLeftNode()
-            smallNode.setLeftNode(currentNode.getRightNode())
-            #print("before = " + repr(self.treeInorderTrav()))
-            
-            self.getRootNode().nodeAddNode(currentNode.getLeftNode())
-            #print("after = " + repr(self.treeInorderTrav()))
-            currentNode.setLeftNode(None)
-            currentNode.setRightNode(None)
-            '''
+            self.deleteSmallestNode(numLoops + 1)
+        
+        
+        
+        #elif currentNode.getLeftNode().getLeftNode() == None:
+        #    self.resetRoot()
+        #    self.deleteSmallestNode()
+        
+
+        #Base Case #2
         else:
             while currentNode.getLeftNode().getLeftNode() != None:
                 currentNode = currentNode.getLeftNode()
@@ -152,16 +148,10 @@ class InstanceBinaryTree(object):
                 smallNode = smallNode.getLeftNode()
             currentNode.setLeftNode(smallNode.getRightNode())
             smallNode.setRightNode(None)
-            '''
-            smallNode.setLeftNode(currentNode.getRightNode())
-            currentNode.setRightNode(None)
-            '''
+
     def updateMinimum(self):
         currentNode = self.getRootNode()
-        print("currentNode = " + repr(currentNode.getLeftNode().getLeftNode()))
         while currentNode.getLeftNode() != None:
-            print("hello test")
-            print("currentNode = " + repr(currentNode))
             currentNode = currentNode.getLeftNode()
         self.setMinValue(currentNode.getValue())
 
@@ -172,9 +162,8 @@ class InstanceBinaryTree(object):
         if self.isBiggerMin(newNode):
             #Actually add it into the binary tree
             self.getRootNode().nodeAddNode(newNode)
-            print(self.treeInorderTrav())
             #Delete the smallest node
-            self.deleteSmallestNode()
+            self.deleteSmallestNode(0)
             #Update the smallest node
             self.updateMinimum()
         #else, its not added
@@ -192,11 +181,11 @@ class InstanceBinaryTree(object):
     #The following is used to incremenet
     ##################################################################
     
-    #The function to call when initializing the binary tree up to 10 nodes
+    #The function to call when initializing the binary tree up to maxNodesAllowed nodes
     def treeInitializeInsertNode(self, newNodeVal):
         self.getRootNode().nodeAddNode(PitchNode(newNodeVal))
         self.incrementTotalNode()
-        return self.getTotalNode() >= 10
+        return self.getTotalNode() >= self.getMaxNodesAllowed()
     
     
     ##################################################################
@@ -216,26 +205,62 @@ class InstanceBinaryTree(object):
         return self.rootNode
     def setRootNode(self, otherNode):
         self.rootNode = otherNode
+    def getThreshold(self):
+        return self.threshold
+    def getMaxNodesAllowed(self):
+        return self.maxNodesAllowed
     
             
 
 def run():
+
+    totalCount = 1
+    
+    threshold = int(input("What is the threshold for the binary tree?"))
+    maxNodesAllowed = int(input("What is the maximum nodes allowed?"))
+    firstVal = int(input("First node? "))
+    
+    currentTree = InstanceBinaryTree(firstVal, threshold, maxNodesAllowed)
+    
+    #for i in testArr:
+    #    currentTree.treeInitializeInsertNode(i)
+    while True:
+        '''
+        #inputStr = input("Give me a number")
+        
+        
+        x = int(input("Are you ready?"))
+        currentTree.treeInsertNode(x)
+        print(currentTree.treeInorderTrav())
+        '''
+        inputStr = random.randint(0, 1000)
+        if totalCount < maxNodesAllowed:
+            currentTree.treeInitializeInsertNode(int(inputStr))
+            totalCount += 1
+        else:
+            input("Are you ready?")
+            currentTree.treeInsertNode(int(inputStr))
+        print(currentTree.treeInorderTrav())
+        
+        
+            
+    '''
     currentTree = InstanceBinaryTree(0)
     for i in range(1,10):
         status = currentTree.treeInitializeInsertNode(i)
         print("status = " + repr(status))
     if status == False:
         print("ERRORRRR")
-    print(currentTree.treeInorderTrav())
     currentTree.treeInsertNode(5) #The program does all the backend work
     #print(currentTree.treeInorderTrav())
     currentTree.treeInsertNode(-2)
     currentTree.treeInsertNode(14)
-    currentTree.treeInsertNode(100)
-    currentTree.treeInsertNode(6)
+    currentTree.treeInsertNode(5.5)
+    currentTree.treeInsertNode(5.6)
+    currentTree.treeInsertNode(6.5)
     print(currentTree.treeInorderTrav())
-    
-    
+    '''
+
 run()
     
 
